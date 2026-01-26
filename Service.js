@@ -14,13 +14,13 @@ const dbConfig = {
     queueLimit: 0,
 };
 
-const app = express();
-app.use(express.json());
+const service = express();
+service.use(express.json());
 
-app.listen(port, () => console.log('Server running on port', port));
+service.listen(port, () => console.log('Server running on port', port));
 
 // Get all trees
-app.get('/trees', async (req, res) => {
+service.get('/trees', async (req, res) => {
     try {
         let connection = await mysql.createConnection(dbConfig);
         const [rows] = await connection.execute('SELECT * FROM Tree');
@@ -32,7 +32,7 @@ app.get('/trees', async (req, res) => {
 });
 
 //addtrees
-app.post('/addtree', async (req, res) => {
+service.post('/addtree', async (req, res) => {
     const {region, tree_count, severity} = req.body;
     try {
         let connection = await mysql.createConnection(dbConfig);
@@ -48,7 +48,7 @@ app.post('/addtree', async (req, res) => {
 });
 
 // Update tree
-app.put('/updatetree/:id', async (req, res) => {
+service.put('/updatetree/:id', async (req, res) => {
     const {id} = req.params;
     const {region, tree_count, severity} = req.body;
 
@@ -66,7 +66,7 @@ app.put('/updatetree/:id', async (req, res) => {
 });
 
 // Delete tree
-app.delete('/deletetree/:id', async (req, res) => {
+service.delete('/deletetree/:id', async (req, res) => {
     const {id} = req.params;
 
     try {
