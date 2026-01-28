@@ -33,20 +33,40 @@ const JWT_SECRET = process.env.JWT_SECRET;
 
 // login
 app.post("/login", async (req, res) => {
-    const { username, password } = req.body;
+    try {
+        const { username, password } = req.body;
 
-    if (username !== DEMO_USER.username || password !== DEMO_USER.password) {
-        return res.status(401).json({ error: "Invalid credentials" });
+        // Validate request body
+        if (!username || !password) {
+            return res.status(400).json({ error: "Username and password are required" });
+        }
+
+        // Check credentials
+        if (username !== DEMO_USER.username || password !== DEMO_USER.password) {
+            return res.status(401).json({ error: "Invalid credentials" });
+        }
+
+        // Ensure JWT_SECRET is defined
+        if (!JWT_SECRET) {
+            console.error("JWT_SECRET is not set in .env!");
+            return res.status(500).json({ error: "Server misconfiguration" });
+        }
+
+        // Generate token
+        const token = jwt.sign(
+            { userId: DEMO_USER.id, username: DEMO_USER.username },
+            JWT_SECRET,
+            { expiresIn: "1h" }
+        );
+
+        // Respond with token
+        return res.json({ token });
+    } catch (err) {
+        console.error("Login route error:", err);
+        return res.status(500).json({ error: "Server error" });
     }
-
-    const token = jwt.sign(
-        { userId: DEMO_USER.id, username: DEMO_USER.username },
-        JWT_SECRET,
-        { expiresIn: "1h" },
-    );
-
-    res.json({ token });
 });
+
 
 function requireAuth(req, res, next) {
     const header = req.headers.authorization; // "Bearer <token>"
