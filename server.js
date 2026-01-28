@@ -38,7 +38,6 @@ app.post("/login", async (req, res) => {
     if (username !== DEMO_USER.username || password !== DEMO_USER.password) {
         return res.status(401).json({ error: "Invalid credentials" });
     }
-
     const token = jwt.sign(
         { userId: DEMO_USER.id, username: DEMO_USER.username },
         JWT_SECRET,
