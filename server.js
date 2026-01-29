@@ -25,6 +25,40 @@ const pool = mysql.createPool(dbConfig);
 const jwt = require("jsonwebtoken");
 const JWT_SECRET = process.env.JWT_SECRET;
 
+// register
+app.post("/register", async (req, res) => {
+  try {
+    const { name, email, password } = req.body;
+
+    // 1. Validate input
+    if (!name || !email || !password) {
+      return res.status(400).json({ error: "Name, email and password are required" });
+    }
+
+    // 2. Check if email already exists
+    const [existing] = await pool.execute(
+      "SELECT id FROM User WHERE email = ?",
+      [email]
+    );
+
+    if (existing.length > 0) {
+      return res.status(409).json({ error: "Email already registered" });
+    }
+
+    // 3. Insert user into database
+    const [result] = await pool.execute(
+      "INSERT INTO User (name, email, password) VALUES (?, ?, ?)",
+      [name, email, password]
+    );
+
+    return res.status(201).json({ message: "Registered successfully", id: result.insertId });
+  } catch (err) {
+    console.error("Register route error:", err);
+    return res.status(500).json({ error: "Server error" });
+  }
+});
+
+
 // login
 app.post("/login", async (req, res) => {
     try {
