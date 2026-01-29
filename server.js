@@ -172,8 +172,8 @@ app.get('/trees', async (req, res) => {
 });
 
 function calculateSeverity(tree_count) {
-    if (tree_count <= 10) return "Low";
-    if (tree_count <= 50) return "Medium";
+    if (tree_count >= 10) return "Low";
+    if (tree_count >= 50) return "Medium";
     return "High";
 }
 
