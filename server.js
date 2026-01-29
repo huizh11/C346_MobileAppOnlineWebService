@@ -36,7 +36,7 @@ app.post("/login", async (req, res) => {
         }
 
         // 2. Find user in database
-        const [rows] = await db.execute(
+        const [rows] = await pool.execute(
             "SELECT id, name, email, password FROM User WHERE email = ?",
             [email]
         );
@@ -123,70 +123,110 @@ app.get('/', (req, res) => {
     res.send('Tree API running');
 });
 
-// Get all trees
+
+// GET all trees
 app.get('/trees', async (req, res) => {
     try {
-        const connection = await mysql.createConnection(dbConfig);
-        const [rows] = await connection.execute('SELECT * FROM Tree');
+        const [rows] = await pool.execute(
+            'SELECT * FROM Tree'
+        );
         res.json(rows);
-        await connection.end();
     } catch (err) {
         console.error(err);
         res.status(500).json({ message: 'Server error for all trees' });
     }
 });
 
-// Add tree
+
+
+// ADD tree 
 app.post('/addtree', requireAuth, async (req, res) => {
-    const { region, tree_count, severity } = req.body;
+    const { region, tree_count } = req.body;
+
+    if (!region || tree_count == null || tree_count < 0) {
+        return res.status(400).json({ error: "Invalid input" });
+    }
+
+    let severity;
+    if (tree_count < 10) {
+        severity = "Low";
+    } else if (tree_count < 50) {
+        severity = "Medium";
+    } else {
+        severity = "High";
+    }
 
     try {
-        const connection = await mysql.createConnection(dbConfig);
-        await connection.execute(
+        await pool.execute(
             'INSERT INTO Tree (region, tree_count, severity) VALUES (?, ?, ?)',
             [region, tree_count, severity]
         );
+
         res.status(201).json({ message: 'Tree added successfully!' });
-        await connection.end();
     } catch (err) {
         console.error(err);
         res.status(500).json({ message: 'Server error - could not add tree' });
     }
 });
 
-// Update tree
-app.put('/updatetree/:id',async (req, res) => {
+
+// UPDATE tree
+app.put('/updatetree/:id', requireAuth, async (req, res) => {
     const { id } = req.params;
-    const { region, tree_count, severity } = req.body;
+    const { region, tree_count } = req.body;
+
+    if (!region || tree_count == null || tree_count < 0) {
+        return res.status(400).json({ error: "Invalid input" });
+    }
+
+    let severity;
+    if (tree_count < 10) {
+        severity = "Low";
+    } else if (tree_count < 50) {
+        severity = "Medium";
+    } else {
+        severity = "High";
+    }
 
     try {
-        const connection = await mysql.createConnection(dbConfig);
-        await connection.execute(
+        const [result] = await pool.execute(
             'UPDATE Tree SET region=?, tree_count=?, severity=? WHERE id=?',
             [region, tree_count, severity, id]
         );
+
+        if (result.affectedRows === 0) {
+            return res.status(404).json({ message: "Tree not found" });
+        }
+
         res.json({ message: `Tree ${id} updated successfully!` });
-        await connection.end();
     } catch (err) {
         console.error(err);
         res.status(500).json({ message: `Server error - could not update tree ${id}` });
     }
 });
 
-// Delete tree
-app.delete('/deletetree/:id', async (req, res) => {
+
+// DELETE tree
+app.delete('/deletetree/:id', requireAuth, async (req, res) => {
     const { id } = req.params;
 
     try {
-        const connection = await mysql.createConnection(dbConfig);
-        await connection.execute('DELETE FROM Tree WHERE id=?', [id]);
+        const [result] = await pool.execute(
+            'DELETE FROM Tree WHERE id=?',
+            [id]
+        );
+
+        if (result.affectedRows === 0) {
+            return res.status(404).json({ message: "Tree not found" });
+        }
+
         res.json({ message: `Tree ${id} deleted successfully!` });
-        await connection.end();
     } catch (err) {
         console.error(err);
         res.status(500).json({ message: `Server error - could not delete tree ${id}` });
     }
 });
+
 
 app.listen(port, () => {
     console.log('Server running on port', port);
