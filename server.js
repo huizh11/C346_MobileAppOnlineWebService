@@ -140,7 +140,7 @@ app.get('/trees', async (req, res) => {
 
 
 // ADD tree 
-app.post('/addtree', requireAuth, async (req, res) => {
+app.post('/addtree', async (req, res) => {
     const { region, tree_count } = req.body;
 
     if (!region || tree_count == null || tree_count < 0) {
@@ -171,7 +171,7 @@ app.post('/addtree', requireAuth, async (req, res) => {
 
 
 // UPDATE tree
-app.put('/updatetree/:id', requireAuth, async (req, res) => {
+app.put('/updatetree/:id', async (req, res) => {
     const { id } = req.params;
     const { region, tree_count } = req.body;
 
@@ -207,7 +207,7 @@ app.put('/updatetree/:id', requireAuth, async (req, res) => {
 
 
 // DELETE tree
-app.delete('/deletetree/:id', requireAuth, async (req, res) => {
+app.delete('/deletetree/:id', async (req, res) => {
     const { id } = req.params;
 
     try {
