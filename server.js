@@ -177,7 +177,7 @@ function calculateSeverity(tree_count) {
     return "High";
 }
 
-
+// add tree
 app.post('/addtree', requireAuth, async (req, res) => {
     const { region, tree_count } = req.body;
 
