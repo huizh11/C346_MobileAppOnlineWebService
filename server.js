@@ -179,6 +179,33 @@ app.post('/addtree', requireAuth, async (req, res) => {
     }
 });
 
+// RESET all tree counts
+app.put('/reset', requireAuth, async (req, res) => {
+    try {
+        await pool.execute(
+            'UPDATE Tree SET tree_count = 0'
+        );
+
+        await pool.execute(
+            `
+            UPDATE Tree
+            SET severity =
+                CASE
+                    WHEN tree_count < 10 THEN 'Low'
+                    WHEN tree_count < 50 THEN 'Medium'
+                    ELSE 'High'
+                END
+            `
+        );
+
+        res.json({ message: "All tree counts reset successfully" });
+
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: "Server error - could not reset tree counts" });
+    }
+});
+
 
 
 // UPDATE tree
