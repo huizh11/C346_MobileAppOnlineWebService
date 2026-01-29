@@ -148,7 +148,6 @@ app.post('/addtree', requireAuth, async (req, res) => {
     }
 
     try {
-        // 1️⃣ Update tree count
         const [result] = await pool.execute(
             'UPDATE Tree SET tree_count = tree_count + ? WHERE region = ?',
             [tree_count, region]
@@ -158,7 +157,6 @@ app.post('/addtree', requireAuth, async (req, res) => {
             return res.status(404).json({ error: "Region not found" });
         }
 
-        // 2️⃣ Recalculate severity AFTER update
         await pool.execute(
             `
             UPDATE Tree
