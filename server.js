@@ -139,35 +139,48 @@ app.get('/trees', async (req, res) => {
 
 
 
-// ADD tree 
-app.post('/addtree', async (req, res) => {
+// ADD tree
+app.post('/addtree', requireAuth, async (req, res) => {
     const { region, tree_count } = req.body;
 
-    if (!region || tree_count == null || tree_count < 0) {
+    if (!region || tree_count == null || tree_count <= 0) {
         return res.status(400).json({ error: "Invalid input" });
     }
 
-    let severity;
-    if (tree_count < 10) {
-        severity = "Low";
-    } else if (tree_count < 50) {
-        severity = "Medium";
-    } else {
-        severity = "High";
-    }
-
     try {
-        await pool.execute(
-            'INSERT INTO Tree (region, tree_count, severity) VALUES (?, ?, ?)',
-            [region, tree_count, severity]
+        // 1️⃣ Update tree count
+        const [result] = await pool.execute(
+            'UPDATE Tree SET tree_count = tree_count + ? WHERE region = ?',
+            [tree_count, region]
         );
 
-        res.status(201).json({ message: 'Tree added successfully!' });
+        if (result.affectedRows === 0) {
+            return res.status(404).json({ error: "Region not found" });
+        }
+
+        // 2️⃣ Recalculate severity AFTER update
+        await pool.execute(
+            `
+            UPDATE Tree
+            SET severity =
+                CASE
+                    WHEN tree_count < 10 THEN 'Low'
+                    WHEN tree_count < 50 THEN 'Medium'
+                    ELSE 'High'
+                END
+            WHERE region = ?
+            `,
+            [region]
+        );
+
+        res.json({ message: "Tree count updated successfully" });
+
     } catch (err) {
         console.error(err);
-        res.status(500).json({ message: 'Server error - could not add tree' });
+        res.status(500).json({ error: "Server error - could not update tree count" });
     }
 });
+
 
 
 // UPDATE tree
