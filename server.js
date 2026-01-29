@@ -178,24 +178,41 @@ function calculateSeverity(tree_count) {
 }
 
 
-// ADD tree
-app.put('/updatetree/:id', async (req, res) => {
-    const { id } = req.params;
+app.post('/addtree', requireAuth, async (req, res) => {
     const { region, tree_count } = req.body;
 
-    const severity = calculateSeverity(tree_count);
+    if (!region || tree_count == null || tree_count < 0) {
+        return res.status(400).json({ error: "Invalid input" });
+    }
 
     try {
-        const connection = await mysql.createConnection(dbConfig);
-        await connection.execute(
-            'UPDATE Tree SET region=?, tree_count=?, severity=? WHERE id=?',
-            [region, tree_count, severity, id]);
-        res.json({ message: `Tree ${id} updated successfully!` });
-        await connection.end();
+        const [result] = await pool.execute(
+            'UPDATE Tree SET tree_count = tree_count + ? WHERE region = ?',
+            [tree_count, region]
+        );
+
+        if (result.affectedRows === 0) {
+            return res.status(404).json({ error: "Region not found" });
+        }
+
+        const [[row]] = await pool.execute(
+            'SELECT tree_count FROM Tree WHERE region = ?',
+            [region]
+        );
+
+        const severity = calculateSeverity(row.tree_count);
+
+        await pool.execute(
+            'UPDATE Tree SET severity = ? WHERE region = ?',
+            [severity, region]);
+
+        res.json({ message: "Tree count updated successfully" });
+
     } catch (err) {
         console.error(err);
-        res.status(500).json({ message: `Server error - could not update tree ${id}` });
+        res.status(500).json({ error: "Server error - could not update tree count" });
     }});
+
 
 
 // RESET all tree counts
