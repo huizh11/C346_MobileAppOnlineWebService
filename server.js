@@ -9,12 +9,6 @@ const port = process.env.PORT || 3000;
 
 app.use(cors());
 
-const DEMO_USER = {
-    id: 1,
-    username: "admin",
-    password: "admin123",
-};
-
 const dbConfig = {
     host: process.env.DB_HOST,
     user: process.env.DB_USER,
@@ -34,33 +28,47 @@ const JWT_SECRET = process.env.JWT_SECRET;
 // login
 app.post("/login", async (req, res) => {
     try {
-        const { username, password } = req.body;
+        const { email, password } = req.body;
 
-        // Validate request body
-        if (!username || !password) {
-            return res.status(400).json({ error: "Username and password are required" });
+        // 1. Validate input
+        if (!email || !password) {
+            return res.status(400).json({ error: "Email and password are required" });
         }
 
-        // Check credentials
-        if (username !== DEMO_USER.username || password !== DEMO_USER.password) {
+        // 2. Find user in database
+        const [rows] = await db.execute(
+            "SELECT id, name, email, password FROM User WHERE email = ?",
+            [email]
+        );
+
+        // 3. Check if user exists
+        if (rows.length === 0) {
             return res.status(401).json({ error: "Invalid credentials" });
         }
 
-        // Ensure JWT_SECRET is defined
+        const user = rows[0];
+
+        // 4. Compare password
+        if (password !== user.password) {
+            return res.status(401).json({ error: "Invalid credentials" });
+        }
+
+        // 5. Ensure JWT_SECRET exists
         if (!JWT_SECRET) {
-            console.error("JWT_SECRET is not set in .env!");
+            console.error("JWT_SECRET is not set");
             return res.status(500).json({ error: "Server misconfiguration" });
         }
 
-        // Generate token
+        // 6. Generate JWT
         const token = jwt.sign(
-            { userId: DEMO_USER.id, username: DEMO_USER.username },
+            { userId: user.id, email: user.email },
             JWT_SECRET,
             { expiresIn: "1h" }
         );
 
-        // Respond with token
+        // 7. Send token
         return res.json({ token });
+
     } catch (err) {
         console.error("Login route error:", err);
         return res.status(500).json({ error: "Server error" });
@@ -68,24 +76,45 @@ app.post("/login", async (req, res) => {
 });
 
 
-function requireAuth(req, res, next) {
-    const header = req.headers.authorization; // "Bearer <token>"
 
-    if (!header) {
+function requireAuth(req, res, next) {
+    const authHeader = req.headers.authorization;
+
+    // 1. Check header exists
+    if (!authHeader) {
         return res.status(401).json({ error: "Authorization header missing" });
     }
 
-    const [type, token] = header.split(" ");
+    // 2. Check format: Bearer <token>
+    const parts = authHeader.split(" ");
 
-    if (type !== "Bearer" || !token) {
-        return res.status(401).json({ error: "Invalid authorization header" });
+    if (parts.length !== 2) {
+        return res.status(401).json({ error: "Invalid authorization format" });
     }
 
+    const type = parts[0];
+    const token = parts[1];
+
+    if (type !== "Bearer") {
+        return res.status(401).json({ error: "Authorization type must be Bearer" });
+    }
+
+    // 3. Check JWT secret
+    if (!JWT_SECRET) {
+        console.error("JWT_SECRET is not set");
+        return res.status(500).json({ error: "Server misconfiguration" });
+    }
+
+    // 4. Verify token
     try {
-        const payload = jwt.verify(token, JWT_SECRET);
-        req.user = payload;
+        const decoded = jwt.verify(token, JWT_SECRET);
+
+        // 5. Attach user info to request
+        req.user = decoded;
+
+        // 6. Continue
         next();
-    } catch (error) {
+    } catch (err) {
         return res.status(401).json({ error: "Invalid or expired token" });
     }
 }
