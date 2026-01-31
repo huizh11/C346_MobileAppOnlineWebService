@@ -29,13 +29,11 @@ const JWT_SECRET = process.env.JWT_SECRET;
 app.post("/register", async (req, res) => {
   try {
     const { name, email, password } = req.body;
-
-    // 1. Validate input
+    // Validate input
     if (!name || !email || !password) {
       return res.status(400).json({ error: "Name, email and password are required" });
     }
-
-    // 2. Check if email already exists
+    // Check if email already exists
     const [existing] = await pool.execute(
       "SELECT id FROM User WHERE email = ?",
       [email]
@@ -44,8 +42,7 @@ app.post("/register", async (req, res) => {
     if (existing.length > 0) {
       return res.status(409).json({ error: "Email already registered" });
     }
-
-    // 3. Insert user into database
+    // Insert user into database
     const [result] = await pool.execute(
       "INSERT INTO User (name, email, password) VALUES (?, ?, ?)",
       [name, email, password]
@@ -63,44 +60,36 @@ app.post("/register", async (req, res) => {
 app.post("/login", async (req, res) => {
     try {
         const { email, password } = req.body;
-
-        // 1. Validate input
+        // Validate input
         if (!email || !password) {
             return res.status(400).json({ error: "Email and password are required" });
         }
-
-        // 2. Find user in database
+        // Find user in database
         const [rows] = await pool.execute(
             "SELECT id, name, email, password FROM User WHERE email = ?",
             [email]
         );
-
-        // 3. Check if user exists
+        //  if user exists
         if (rows.length === 0) {
             return res.status(401).json({ error: "Invalid credentials" });
         }
-
         const user = rows[0];
-
-        // 4. Compare password
+        // Compare password
         if (password !== user.password) {
             return res.status(401).json({ error: "Invalid credentials" });
         }
-
-        // 5. Ensure JWT_SECRET exists
+        // Ensure JWT_SECRET exists
         if (!JWT_SECRET) {
             console.error("JWT_SECRET is not set");
             return res.status(500).json({ error: "Server misconfiguration" });
         }
-
-        // 6. Generate JWT
+        // Generate JWT
         const token = jwt.sign(
             { userId: user.id, email: user.email },
             JWT_SECRET,
             { expiresIn: "1h" }
         );
-
-        // 7. Send token
+        // Send token
         return res.json({ token });
 
     } catch (err) {
@@ -113,19 +102,16 @@ app.post("/login", async (req, res) => {
 
 function requireAuth(req, res, next) {
     const authHeader = req.headers.authorization;
-
-    // 1. Check header exists
+    // Check header exists
     if (!authHeader) {
         return res.status(401).json({ error: "Authorization header missing" });
     }
-
-    // 2. Check format: Bearer <token>
+    // Check format: Bearer <token>
     const parts = authHeader.split(" ");
 
     if (parts.length !== 2) {
         return res.status(401).json({ error: "Invalid authorization format" });
     }
-
     const type = parts[0];
     const token = parts[1];
 
@@ -133,20 +119,17 @@ function requireAuth(req, res, next) {
         return res.status(401).json({ error: "Authorization type must be Bearer" });
     }
 
-    // 3. Check JWT secret
+    // Check JWT secret
     if (!JWT_SECRET) {
         console.error("JWT_SECRET is not set");
         return res.status(500).json({ error: "Server misconfiguration" });
     }
-
-    // 4. Verify token
+    // Verify token
     try {
         const decoded = jwt.verify(token, JWT_SECRET);
-
-        // 5. Attach user info to request
+        // Attach user info to request
         req.user = decoded;
-
-        // 6. Continue
+        // Continue
         next();
     } catch (err) {
         return res.status(401).json({ error: "Invalid or expired token" });
@@ -185,13 +168,13 @@ app.post('/addtree', requireAuth, async (req, res) => {
     }
 
     try {
-        // 1. Try updating existing region
+        // Try updating existing region
         const [updateResult] = await pool.execute(
             'UPDATE Tree SET tree_count = tree_count + ? WHERE region = ?',
             [tree_count, region]
         );
 
-        // 2. If region does not exist → insert new row
+        // If region does not exist → insert new row
         if (updateResult.affectedRows === 0) {
             const severity = calculateSeverity(tree_count);
 
@@ -203,7 +186,7 @@ app.post('/addtree', requireAuth, async (req, res) => {
             return res.json({ message: "New region added successfully" });
         }
 
-        // 3. If region exists → recalculate severity
+        // If region exists → recalculate severity
         const [[row]] = await pool.execute(
             'SELECT tree_count FROM Tree WHERE region = ?',
             [region]
@@ -223,9 +206,6 @@ app.post('/addtree', requireAuth, async (req, res) => {
         res.status(500).json({ error: "Server error" });
     }
 });
-
-
-
 
 // RESET all tree counts
 app.put('/reset', requireAuth, async (req, res) => {
@@ -253,8 +233,6 @@ app.put('/reset', requireAuth, async (req, res) => {
         res.status(500).json({ error: "Server error - could not reset tree counts" });
     }
 });
-
-
 
 // UPDATE tree
 app.put('/updatetree/:id', async (req, res) => {
@@ -290,7 +268,6 @@ app.put('/updatetree/:id', async (req, res) => {
         res.status(500).json({ message: `Server error - could not update tree ${id}` });
     }
 });
-
 
 // DELETE tree
 app.delete('/deletetree/:id', async (req, res) => {
