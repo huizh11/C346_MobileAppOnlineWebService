@@ -219,9 +219,9 @@ app.put('/reset', requireAuth, async (req, res) => {
             UPDATE Tree
             SET severity =
                 CASE
-                    WHEN tree_count < 10 THEN 'Low'
-                    WHEN tree_count < 50 THEN 'Medium'
-                    ELSE 'High'
+                    WHEN tree_count <= 200 THEN 'High'
+                    WHEN tree_count <= 500 THEN 'Medium'
+                    ELSE 'Low'
                 END
             `
         );
@@ -244,12 +244,12 @@ app.put('/updatetree/:id', async (req, res) => {
     }
 
     let severity;
-    if (tree_count < 10) {
-        severity = "Low";
-    } else if (tree_count < 50) {
+    if (tree_count <= 200) {
+        severity = "High";
+    } else if (tree_count <= 500) {
         severity = "Medium";
     } else {
-        severity = "High";
+        severity = "Low";
     }
 
     try {
