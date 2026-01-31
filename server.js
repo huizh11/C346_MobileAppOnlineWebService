@@ -185,15 +185,25 @@ app.post('/addtree', requireAuth, async (req, res) => {
     }
 
     try {
-        const [result] = await pool.execute(
+        // 1. Try updating existing region
+        const [updateResult] = await pool.execute(
             'UPDATE Tree SET tree_count = tree_count + ? WHERE region = ?',
             [tree_count, region]
         );
 
-        if (result.affectedRows === 0) {
-            return res.status(404).json({ error: "Region not found" });
+        // 2. If region does not exist → insert new row
+        if (updateResult.affectedRows === 0) {
+            const severity = calculateSeverity(tree_count);
+
+            await pool.execute(
+                'INSERT INTO Tree (region, tree_count, severity) VALUES (?, ?, ?)',
+                [region, tree_count, severity]
+            );
+
+            return res.json({ message: "New region added successfully" });
         }
 
+        // 3. If region exists → recalculate severity
         const [[row]] = await pool.execute(
             'SELECT tree_count FROM Tree WHERE region = ?',
             [region]
@@ -203,14 +213,17 @@ app.post('/addtree', requireAuth, async (req, res) => {
 
         await pool.execute(
             'UPDATE Tree SET severity = ? WHERE region = ?',
-            [severity, region]);
+            [severity, region]
+        );
 
         res.json({ message: "Tree count updated successfully" });
 
     } catch (err) {
         console.error(err);
-        res.status(500).json({ error: "Server error - could not update tree count" });
-    }});
+        res.status(500).json({ error: "Server error" });
+    }
+});
+
 
 
 
